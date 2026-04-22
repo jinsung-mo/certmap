@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소셜 로그인 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-google {
+            background: #4285f4;
+            color: white;
+        }
+
+        .btn-kakao {
+            background: #fee500;
+            color: #000000;
+        }
+
+        .btn-naver {
+            background: #03c75a;
+            color: white;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .result pre {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .success {
+            border-left-color: #28a745;
+        }
+
+        .error {
+            border-left-color: #dc3545;
+        }
+
+        .icon {
+            margin-right: 8px;
+        }
+
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .info-box h3 {
+            color: #17a2b8;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .info-box p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .info-box code {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .tab-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 로그인 테스트</h1>
+        <p class="subtitle">Auth Service - 일반 로그인 & 소셜 로그인</p>
+
+        <!-- 일반 로그인 섹션 -->
+        <div class="section">
+            <div class="section-title">일반 인증</div>
+
+            <!-- 탭 버튼 -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('login')">로그인</button>
+                <button class="tab-btn" onclick="switchTab('signup')">회원가입</button>
+            </div>
+
+            <!-- 로그인 폼 -->
+            <div id="login-tab" class="tab-content active">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="login-email">이메일</label>
+                        <input type="email" id="login-email" name="email" placeholder="이메일을 입력하세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">비밀번호</label>
+                        <input type="password" id="login-password" name="password" placeholder="비밀번호를 입력하세요" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="icon">🔑</span>
+                        로그인
+                    </button>
+                </form>
+            </div>
+
+            <!-- 회원가입 폼 -->
+            <div id="signup-tab" class="tab-content">
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label for="signup-email">이메일</label>
+                        <input type="email" id="signup-email" name="email" placeholder="이메일을 입력하세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">비밀번호</label>
+                        <input type="password" id="signup-password" name="password" placeholder="비밀번호를 입력하세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password-confirm">비밀번호 확인</label>
+                        <input type="password" id="signup-password-confirm" name="passwordConfirm" placeholder="비밀번호를 다시 입력하세요" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="icon">✍️</span>
+                        회원가입
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="divider">
+            <span>또는</span>
+        </div>
+
+        <!-- 소셜 로그인 섹션 -->
+        <div class="section">
+            <div class="section-title">소셜 로그인</div>
+            <a href="http://localhost:8080/oauth2/authorization/google" class="btn btn-google">
+                <span class="icon">G</span>
+                Google로 로그인
+            </a>
+            <a href="http://localhost:8080/oauth2/authorization/kakao" class="btn btn-kakao">
+                <span class="icon">💬</span>
+                Kakao로 로그인
+            </a>
+            <a href="http://localhost:8080/oauth2/authorization/naver" class="btn btn-naver">
+                <span class="icon">N</span>
+                Naver로 로그인
+            </a>
+        </div>
+
+        <!-- 결과 표시 -->
+        <div id="result" class="result"></div>
+
+        <!-- 안내 정보 -->
+        <div class="info-box">
+            <h3>ℹ️ 테스트 안내</h3>
+            <p><strong>일반 로그인:</strong> 기본값으로 설정된 계정으로 테스트할 수 있습니다.</p>
+            <p><strong>소셜 로그인:</strong> 각 버튼을 클릭하면 해당 플랫폼의 로그인 페이지로 이동합니다.</p>
+            <p><strong>성공 시:</strong> JWT 토큰이 <code>localStorage</code>에 저장되고 여기에 표시됩니다.</p>
+        </div>
+    </div>
+
+    <script>
+        // 탭 전환 함수
+        function switchTab(tabName) {
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // 모든 탭 컨텐츠 숨기기
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 선택된 탭 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            // 결과 메시지 초기화
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '';
+        }
+
+        // 회원가입 처리
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const passwordConfirm = document.getElementById('signup-password-confirm').value;
+
+            const resultDiv = document.getElementById('result');
+
+            // 비밀번호 확인
+            if (password !== passwordConfirm) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <h3>❌ 비밀번호 불일치</h3>
+                    <p>비밀번호가 일치하지 않습니다. 다시 확인해주세요.</p>
+                `;
+                return;
+            }
+
+            resultDiv.innerHTML = '<h3>회원가입 중...</h3>';
+            resultDiv.className = 'result show';
+
+            try {
+                const response = await fetch('http://localhost:8080/api/auth/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ 회원가입 성공!</h3>
+                        <p>계정이 생성되었습니다. 이제 로그인할 수 있습니다.</p>
+                        <p style="margin-top: 10px;">
+                            <button onclick="switchToLogin('${email}')" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                로그인하기
+                            </button>
+                        </p>
+                    `;
+                } else {
+                    const errorData = await response.text();
+                    throw new Error(errorData || '회원가입 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <h3>❌ 회원가입 실패</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+
+        // 회원가입 후 로그인 탭으로 이동
+        function switchToLogin(email) {
+            // 로그인 탭으로 전환
+            document.querySelectorAll('.tab-btn').forEach((btn, index) => {
+                btn.classList.remove('active');
+                if (index === 0) btn.classList.add('active');
+            });
+
+            document.querySelectorAll('.tab-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index === 0) content.classList.add('active');
+            });
+
+            // 이메일 자동 입력
+            document.getElementById('login-email').value = email;
+            document.getElementById('login-password').focus();
+
+            // 결과 메시지 초기화
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '';
+        }
+
+        // 일반 로그인 처리
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<h3>로그인 중...</h3>';
+            resultDiv.className = 'result show';
+
+            try {
+                const response = await fetch('http://localhost:8080/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const token = data.accessToken;
+
+                    // 토큰 저장
+                    localStorage.setItem('accessToken', token);
+
+                    resultDiv.className = 'result show success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ 로그인 성공!</h3>
+                        <p>JWT 토큰이 localStorage에 저장되었습니다.</p>
+                        <pre>${token.substring(0, 50)}...${token.substring(token.length - 20)}</pre>
+                        <p style="margin-top: 10px; font-size: 13px;">전체 토큰은 브라우저 콘솔에서 확인하세요.</p>
+                    `;
+                    console.log('Full JWT Token:', token);
+                } else {
+                    const errorData = await response.text();
+                    throw new Error(errorData || '로그인 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <h3>❌ 로그인 실패</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+
+        // 페이지 로드 시 소셜 로그인 리다이렉트 확인
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+
+            if (token) {
+                // 소셜 로그인 성공
+                localStorage.setItem('accessToken', token);
+
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'result show success';
+                resultDiv.innerHTML = `
+                    <h3>✅ 소셜 로그인 성공!</h3>
+                    <p>JWT 토큰이 localStorage에 저장되었습니다.</p>
+                    <pre>${token.substring(0, 50)}...${token.substring(token.length - 20)}</pre>
+                    <p style="margin-top: 10px; font-size: 13px;">전체 토큰은 브라우저 콘솔에서 확인하세요.</p>
+                `;
+                console.log('Full JWT Token from Social Login:', token);
+
+                // URL에서 토큰 파라미터 제거
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            // 저장된 토큰이 있는지 확인
+            const savedToken = localStorage.getItem('accessToken');
+            if (savedToken && !token) {
+                console.log('Previously saved token found:', savedToken);
+            }
+        });
+    </script>
+</body>
+</html>
