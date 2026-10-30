@@ -27,7 +27,8 @@ server:
 
 # JWT 설정
 jwt:
-  secret-key: ${JWT_SECRET_KEY:your-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-please-change-this-in-production-environment}
+  # 기본값 없음: JWT_SECRET_KEY(32바이트 이상)가 없으면 서버가 시작되지 않는다
+  secret-key: ${JWT_SECRET_KEY}
   expiration-hours: 24
 
 # CORS 설정 (프론트엔드와 협업 시 필요)
@@ -36,6 +37,12 @@ cors:
   allowed-methods: GET,POST,PUT,DELETE,OPTIONS
   allowed-headers: "*"
   allow-credentials: true
+
+# OAuth2 로그인 성공 후 돌아갈 프론트엔드 주소 (http, https만 허용)
+# JWT는 URL에 싣지 않고 1회용 코드(code)만 붙인다. 프론트엔드는 POST /api/auth/oauth2/token 으로 코드를 토큰과 바꾼다.
+app:
+  oauth2:
+    redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/redirect}
 
 # OAuth2 소셜 로그인 설정
 # 실제 운영 시 각 소셜 플랫폼에서 Client ID와 Secret을 발급받아 설정해야 합니다

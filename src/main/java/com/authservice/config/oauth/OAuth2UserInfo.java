@@ -13,4 +13,7 @@ public abstract class OAuth2UserInfo {
     public abstract String getProvider();
     public abstract String getEmail();
     public abstract String getName();
+
+    // 소셜 제공자가 이메일 소유를 확인했는지. 확인되지 않은 이메일로는 기존 계정과 연결하지 않는다.
+    public abstract boolean isEmailVerified();
 }

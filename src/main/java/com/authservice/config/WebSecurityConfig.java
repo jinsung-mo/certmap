@@ -49,7 +49,7 @@ public class WebSecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 경로별 인가 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/oauth2/token").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/login/**", "/oauth2/**").permitAll() // OAuth2 경로 허용
                         .requestMatchers("/api/**").authenticated()

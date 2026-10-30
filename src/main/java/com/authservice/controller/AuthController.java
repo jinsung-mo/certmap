@@ -2,10 +2,12 @@ package com.authservice.controller;
 
 import lombok.RequiredArgsConstructor;
 import com.authservice.config.jwt.TokenProvider;
+import com.authservice.config.oauth.OAuth2LoginCodeService;
 import com.authservice.domain.User;
 import com.authservice.dto.AddUserRequest;
 import com.authservice.dto.LoginRequest;
 import com.authservice.dto.LoginResponse;
+import com.authservice.dto.OAuth2CodeRequest;
 import com.authservice.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,7 @@ public class AuthController {
     private final UserService userService;
     private final TokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final OAuth2LoginCodeService loginCodeService;
 
     /**
      * 회원가입 API
@@ -55,6 +58,21 @@ public class AuthController {
         String token = tokenProvider.generateToken(user, Duration.ofHours(24));
 
         return ResponseEntity.ok(new LoginResponse(token));
+    }
+
+    /**
+     * 소셜 로그인 코드 교환 API
+     * POST /api/auth/oauth2/token
+     *
+     * 소셜 로그인 성공 후 리다이렉트 주소에 붙은 1회용 코드를 JWT로 바꿔 준다.
+     * 코드는 60초 동안 한 번만 쓸 수 있고, 없거나 만료된 코드에는 401을 돌려준다.
+     */
+    @PostMapping("/oauth2/token")
+    public ResponseEntity<LoginResponse> exchangeOAuth2Code(@RequestBody OAuth2CodeRequest request) {
+        return loginCodeService.consume(request.getCode())
+                .map(userService::findById)
+                .map(user -> ResponseEntity.ok(new LoginResponse(tokenProvider.generateToken(user, Duration.ofHours(24)))))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
     /**

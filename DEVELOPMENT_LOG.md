@@ -163,6 +163,44 @@ ALTER TABLE users ADD COLUMN provider_id VARCHAR(255);
 
 ---
 
+## 2026-10-30: 보안 보완 (프로젝트 종료 후)
+
+### 1. JWT 비밀키 기본값 제거
+- `src/main/resources/application.yml`, `config/jwt/TokenProvider.java`
+- `jwt.secret-key`의 기본값을 없애고 `JWT_SECRET_KEY` 환경 변수만 읽는다. 없거나 32바이트보다 짧으면 서버가 시작되지 않는다.
+- 이유: 저장소에 공개된 기본 키로 서버가 뜨면 누구나 같은 키로 토큰을 위조할 수 있었다.
+
+### 2. 소셜 로그인 결과를 URL로 넘기던 방식 변경
+- `config/oauth/OAuth2SuccessHandler.java`, `config/oauth/OAuth2LoginCodeService.java`, `controller/AuthController.java`
+- 로그인 성공 후 개발용 로컬 파일 경로(`file://`)로 JWT를 쿼리에 붙여 보내던 것을, `OAUTH2_REDIRECT_URI`(http, https만 허용)로 60초짜리 1회용 코드만 붙여 보내도록 바꿨다.
+- 프론트엔드는 `POST /api/auth/oauth2/token`으로 코드를 JWT로 바꾼다. 코드는 한 번 쓰면 사라진다.
+- 이유: URL에 담긴 토큰은 브라우저 기록, 서버 로그, Referer 헤더에 남는다.
+- 한계: 코드는 서버 메모리에 보관하므로 서버를 여러 대 띄우면 Redis 같은 공유 저장소가 필요하다.
+
+### 3. 이메일 인증을 확인한 계정끼리만 연결
+- `config/oauth/CustomOAuth2UserService.java`, `OAuth2UserInfo`와 제공자별 구현, `domain/User.java`, `repository/UserRepository.java`
+- 소셜 로그인은 제공자와 제공자 사용자 ID로 먼저 찾는다.
+- 같은 이메일의 계정이 있으면, 제공자가 이메일 소유를 확인했고(구글 `email_verified`, 카카오 `is_email_valid`와 `is_email_verified`) 기존 계정의 이메일도 확인된 경우에만 연결한다. 네이버는 인증 여부를 알려 주지 않아 미인증으로 본다.
+- 이유: 인증되지 않은 이메일을 단 소셜 계정으로 같은 이메일의 남의 계정에 로그인할 수 있었다.
+- 일반 회원가입은 아직 이메일 인증이 없어서 소셜 계정과 자동으로 연결하지 않는다.
+
+### 4. API 변경사항
+- 추가: `POST /api/auth/oauth2/token` (요청 `{"code": "..."}`, 응답 `{"accessToken": "..."}`, 실패 시 401)
+- 변경: 소셜 로그인 성공 리다이렉트의 `?token=`을 `?code=`로 바꿈
+
+### 5. 데이터베이스 변경사항
+- `users.email_verified` (boolean, 기본값 false) 추가
+
+### 6. 설정 변경사항
+- `JWT_SECRET_KEY` 필수 (기본값 없음)
+- `OAUTH2_REDIRECT_URI` 추가 (기본값 `http://localhost:3000/oauth2/redirect`)
+- `build.gradle`: Java 소스를 UTF-8로 컴파일
+
+### 7. 테스트
+- 보안 보완 단위 테스트와 통합 테스트 20개 추가 (`src/test/java`)
+
+---
+
 ## 다음 개발 계획 (TODO)
 
 - [ ] 리프레시 토큰 기능 추가

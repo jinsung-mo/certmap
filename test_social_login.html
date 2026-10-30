@@ -346,6 +346,7 @@
             <h3>ℹ️ 테스트 안내</h3>
             <p><strong>일반 로그인:</strong> 기본값으로 설정된 계정으로 테스트할 수 있습니다.</p>
             <p><strong>소셜 로그인:</strong> 각 버튼을 클릭하면 해당 플랫폼의 로그인 페이지로 이동합니다.</p>
+            <p><strong>소셜 로그인 테스트 준비:</strong> 이 파일을 <code>http://localhost:3000</code>에서 열고(예: <code>python -m http.server 3000</code>), 서버의 <code>OAUTH2_REDIRECT_URI</code>를 <code>http://localhost:3000/test_social_login.html</code>로 설정하세요.</p>
             <p><strong>성공 시:</strong> JWT 토큰이 <code>localStorage</code>에 저장되고 여기에 표시됩니다.</p>
         </div>
     </div>
@@ -501,32 +502,41 @@
         });
 
         // 페이지 로드 시 소셜 로그인 리다이렉트 확인
-        window.addEventListener('load', () => {
+        // 서버는 JWT 대신 1회용 코드(code)를 붙여 보내므로, 코드를 POST로 보내 토큰과 바꾼다
+        window.addEventListener('load', async () => {
             const params = new URLSearchParams(window.location.search);
-            const token = params.get('token');
+            const code = params.get('code');
 
-            if (token) {
-                // 소셜 로그인 성공
-                localStorage.setItem('accessToken', token);
-
-                const resultDiv = document.getElementById('result');
-                resultDiv.className = 'result show success';
-                resultDiv.innerHTML = `
-                    <h3>✅ 소셜 로그인 성공!</h3>
-                    <p>JWT 토큰이 localStorage에 저장되었습니다.</p>
-                    <pre>${token.substring(0, 50)}...${token.substring(token.length - 20)}</pre>
-                    <p style="margin-top: 10px; font-size: 13px;">전체 토큰은 브라우저 콘솔에서 확인하세요.</p>
-                `;
-                console.log('Full JWT Token from Social Login:', token);
-
-                // URL에서 토큰 파라미터 제거
+            if (code) {
+                // 코드가 주소창과 방문 기록에 남지 않게 바로 지운다
                 window.history.replaceState({}, document.title, window.location.pathname);
-            }
+                const resultDiv = document.getElementById('result');
 
-            // 저장된 토큰이 있는지 확인
-            const savedToken = localStorage.getItem('accessToken');
-            if (savedToken && !token) {
-                console.log('Previously saved token found:', savedToken);
+                try {
+                    const response = await fetch('http://localhost:8080/api/auth/oauth2/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code })
+                    });
+                    if (!response.ok) {
+                        throw new Error('코드가 만료됐거나 이미 사용되었습니다. 다시 로그인해 주세요.');
+                    }
+                    const token = (await response.json()).accessToken;
+                    localStorage.setItem('accessToken', token);
+
+                    resultDiv.className = 'result show success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ 소셜 로그인 성공!</h3>
+                        <p>1회용 코드를 JWT로 바꿔 localStorage에 저장했습니다.</p>
+                        <pre>${token.substring(0, 50)}...${token.substring(token.length - 20)}</pre>
+                    `;
+                } catch (error) {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ 소셜 로그인 실패</h3>
+                        <p>${error.message}</p>
+                    `;
+                }
             }
         });
     </script>

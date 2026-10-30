@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,13 +39,18 @@ public class User implements UserDetails {
     @Column(name = "provider_id")
     private String providerId; // 소셜 로그인 제공자의 사용자 ID
 
+    @ColumnDefault("false")
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified; // 이메일 소유가 확인된 계정인지 (일반 가입은 아직 이메일 인증이 없어 false)
+
     @Builder
-    public User(String email, String password, String name, String provider, String providerId){
+    public User(String email, String password, String name, String provider, String providerId, boolean emailVerified){
         this.email = email;
         this.password = password;
         this.name = name;
         this.provider = provider;
         this.providerId = providerId;
+        this.emailVerified = emailVerified;
     }
 
     // OAuth2 사용자를 위한 업데이트 메소드

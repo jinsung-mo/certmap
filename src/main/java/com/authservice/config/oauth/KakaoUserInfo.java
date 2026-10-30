@@ -35,4 +35,15 @@ public class KakaoUserInfo extends OAuth2UserInfo {
         }
         return (String) properties.get("nickname");
     }
+
+    // 카카오는 이메일이 유효하고(is_email_valid) 인증된(is_email_verified) 경우에만 믿는다
+    @Override
+    public boolean isEmailVerified() {
+        Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+        if (kakaoAccount == null) {
+            return false;
+        }
+        return Boolean.TRUE.equals(kakaoAccount.get("is_email_valid"))
+                && Boolean.TRUE.equals(kakaoAccount.get("is_email_verified"));
+    }
 }

@@ -35,11 +35,16 @@ Spring Boot 기반의 독립적인 JWT 인증 서비스입니다. 일반 로그�
 - ✅ Google OAuth2 로그인
 - ✅ Kakao OAuth2 로그인
 - ✅ Naver OAuth2 로그인
-- ✅ 소셜 계정 자동 연동 (같은 이메일 사용 시)
+- ✅ 소셜 계정 연동 (같은 이메일이어도 제공자가 이메일 소유를 확인한 계정끼리만 연결)
 
 ### 기타
 - ✅ CORS 설정 (프론트엔드 협업용)
 - ✅ H2 콘솔 (개발 모드)
+
+### 보안 보완 (프로젝트 종료 후, 2026-10)
+- JWT 비밀키의 기본값을 없앴습니다. `JWT_SECRET_KEY`가 없거나 32바이트보다 짧으면 서버가 시작되지 않습니다.
+- 소셜 로그인 후 JWT를 URL에 싣지 않습니다. 60초 동안 한 번만 쓸 수 있는 코드를 보내고, 프론트엔드가 `POST /api/auth/oauth2/token`으로 토큰과 바꿉니다. 개발용 로컬 파일 경로로 보내던 리다이렉트는 `OAUTH2_REDIRECT_URI` 설정으로 바꿨습니다.
+- 제공자가 이메일 소유를 확인하지 않은 소셜 계정은 같은 이메일의 기존 계정에 연결하지 않습니다. 소셜 로그인은 제공자와 제공자 사용자 ID로 먼저 찾습니다.
 
 ## 프로젝트 구조
 
@@ -57,7 +62,8 @@ Backend_service/
 │   │   │   ├── NaverUserInfo.java              # Naver 사용자 정보 처리
 │   │   │   ├── PrincipalDetails.java           # 통합 인증 정보
 │   │   │   ├── CustomOAuth2UserService.java    # OAuth2 사용자 처리 서비스
-│   │   │   └── OAuth2SuccessHandler.java       # OAuth2 성공 핸들러
+│   │   │   ├── OAuth2LoginCodeService.java     # 소셜 로그인 1회용 코드 발급과 교환
+│   │   │   └── OAuth2SuccessHandler.java       # OAuth2 성공 핸들러 (1회용 코드로 리다이렉트)
 │   │   └── WebSecurityConfig.java              # Spring Security 설정
 │   ├── controller/
 │   │   └── AuthController.java                 # 인증 API 컨트롤러
@@ -66,6 +72,7 @@ Backend_service/
 │   ├── dto/
 │   │   ├── AddUserRequest.java                 # 회원가입 요청 DTO
 │   │   ├── LoginRequest.java                   # 로그인 요청 DTO
+│   │   ├── OAuth2CodeRequest.java              # 소셜 로그인 코드 교환 요청 DTO
 │   │   └── LoginResponse.java                  # 로그인 응답 DTO
 │   ├── repository/
 │   │   └── UserRepository.java                 # 사용자 Repository
@@ -75,6 +82,7 @@ Backend_service/
 │   └── AuthServiceApplication.java             # 메인 애플리케이션
 ├── src/main/resources/
 │   └── application.yml                         # 설정 파일
+├── src/test/java/com/authservice/              # 보안 보완 단위 테스트와 통합 테스트
 ├── DEVELOPMENT_LOG.md                          # 개발 로그 (상세 기록)
 └── README.md                                   # 프로젝트 개요 (현재 문서)
 ```
@@ -84,9 +92,20 @@ Backend_service/
 ### 1. 프로젝트 클론 및 빌드
 
 ```bash
-cd /Users/moss/IdeaProjects/Backend_service
+cd certmap
 
-# Gradle 빌드
+# 필수: JWT 서명 키 (32바이트 이상, 기본값 없음)
+export JWT_SECRET_KEY="$(openssl rand -base64 48)"
+
+# 소셜 로그인 키 (각 플랫폼에서 발급)
+export GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=...
+export KAKAO_CLIENT_ID=... KAKAO_CLIENT_SECRET=...
+export NAVER_CLIENT_ID=... NAVER_CLIENT_SECRET=...
+
+# 선택: 소셜 로그인 후 돌아갈 프론트엔드 주소 (기본값 http://localhost:3000/oauth2/redirect)
+export OAUTH2_REDIRECT_URI="http://localhost:3000/oauth2/redirect"
+
+# Gradle 빌드 (테스트 포함)
 ./gradlew build
 
 # 애플리케이션 실행
@@ -194,15 +213,33 @@ curl -X GET http://localhost:8080/api/auth/validate \
 - **Kakao**: `http://localhost:8080/oauth2/authorization/kakao`
 - **Naver**: `http://localhost:8080/oauth2/authorization/naver`
 
-#### 로그인 성공 후 리다이렉트
+#### 로그인 성공 후 리다이렉트와 코드 교환
 
-소셜 로그인 성공 시 다음 URL로 리다이렉트됩니다:
+소셜 로그인에 성공하면 `OAUTH2_REDIRECT_URI`(기본값 `http://localhost:3000/oauth2/redirect`)로 돌아갑니다. JWT는 URL에 싣지 않고, 60초 동안 한 번만 쓸 수 있는 코드만 붙입니다.
 
 ```
-http://localhost:3000/oauth2/redirect?token={JWT_TOKEN}
+http://localhost:3000/oauth2/redirect?code={1회용 코드}
 ```
 
-프론트엔드에서 이 토큰을 추출하여 localStorage에 저장하고 사용하면 됩니다.
+프론트엔드는 이 코드를 JWT로 바꿉니다.
+
+**Endpoint:** `POST /api/auth/oauth2/token`
+
+**Request Body:**
+```json
+{
+  "code": "{1회용 코드}"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+코드가 없거나, 이미 썼거나, 60초가 지났으면 `401 Unauthorized`를 돌려줍니다. 토큰을 URL에 넣으면 브라우저 기록, 서버 로그, Referer 헤더에 남기 때문에 이렇게 바꿨습니다.
 
 ## 소셜 로그인 설정
 
@@ -238,23 +275,23 @@ http://localhost:3000/oauth2/redirect?token={JWT_TOKEN}
 
 ### 2. application.yml 설정
 
-`src/main/resources/application.yml` 파일에서 발급받은 정보를 입력합니다:
+발급받은 Client ID와 Secret은 `application.yml`에 직접 적지 말고 환경 변수로 넣습니다. `application.yml`은 아래처럼 환경 변수를 읽습니다:
 
 ```yaml
 spring.security.oauth2:
   client:
     registration:
       google:
-        client-id: YOUR_GOOGLE_CLIENT_ID           # 여기에 입력
-        client-secret: YOUR_GOOGLE_CLIENT_SECRET   # 여기에 입력
+        client-id: ${GOOGLE_CLIENT_ID}
+        client-secret: ${GOOGLE_CLIENT_SECRET}
 
       kakao:
-        client-id: YOUR_KAKAO_CLIENT_ID            # 여기에 입력
-        client-secret: YOUR_KAKAO_CLIENT_SECRET    # 여기에 입력
+        client-id: ${KAKAO_CLIENT_ID}
+        client-secret: ${KAKAO_CLIENT_SECRET}
 
       naver:
-        client-id: YOUR_NAVER_CLIENT_ID            # 여기에 입력
-        client-secret: YOUR_NAVER_CLIENT_SECRET    # 여기에 입력
+        client-id: ${NAVER_CLIENT_ID}
+        client-secret: ${NAVER_CLIENT_SECRET}
 ```
 
 ## 프론트엔드 통합 가이드
@@ -295,13 +332,16 @@ export const socialLogin = (provider) => {
 };
 
 // 4. OAuth2 리다이렉트 처리 (React Router 사용)
-// /oauth2/redirect 경로에서 처리
-export const handleOAuth2Redirect = () => {
+// /oauth2/redirect 경로에서 1회용 코드를 JWT로 바꾼다
+export const handleOAuth2Redirect = async () => {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
+  const code = params.get('code');
+  // 코드가 주소창과 방문 기록에 남지 않게 바로 지운다
+  window.history.replaceState({}, document.title, window.location.pathname);
 
-  if (token) {
-    localStorage.setItem('accessToken', token);
+  if (code) {
+    const response = await authAPI.post('/oauth2/token', { code });
+    localStorage.setItem('accessToken', response.data.accessToken);
     // 메인 페이지로 이동
     window.location.href = '/';
   }
@@ -398,6 +438,13 @@ export const authService = {
     window.location.href = `http://localhost:8080/oauth2/authorization/${provider}`;
   },
 
+  // 소셜 로그인 후 돌아온 페이지에서 1회용 코드를 JWT로 바꾼다
+  async exchangeOAuth2Code(code) {
+    const response = await axios.post(`${API_BASE_URL}/oauth2/token`, { code });
+    localStorage.setItem('accessToken', response.data.accessToken);
+    return response.data.accessToken;
+  },
+
   // 로그아웃
   logout() {
     localStorage.removeItem('accessToken');
@@ -407,19 +454,12 @@ export const authService = {
 
 ## 운영 환경 배포
 
-### 1. JWT Secret Key 변경
+### 1. JWT Secret Key 설정
 
-운영 환경에서는 반드시 안전한 Secret Key를 사용해야 합니다:
+`jwt.secret-key`는 기본값 없이 `JWT_SECRET_KEY` 환경 변수만 읽습니다. 값이 없거나 32바이트보다 짧으면 서버가 시작되지 않습니다. 저장소에 공개된 기본 키로 서버가 떠서 누구나 같은 키로 토큰을 위조할 수 있던 문제를 막기 위해서입니다.
 
-```yaml
-jwt:
-  secret-key: ${JWT_SECRET_KEY}  # 환경변수 사용
-  expiration-hours: 24
-```
-
-환경변수 설정:
 ```bash
-export JWT_SECRET_KEY="your-very-long-and-secure-secret-key-at-least-256-bits"
+export JWT_SECRET_KEY="$(openssl rand -base64 48)"
 ```
 
 ### 2. 데이터베이스 변경 (PostgreSQL 예시)
@@ -478,11 +518,21 @@ spring.security.oauth2:
         redirect-uri: https://yourdomain.com/login/oauth2/code/naver
 ```
 
+로그인 후 돌아갈 프론트엔드 주소는 `OAUTH2_REDIRECT_URI`로 바꿉니다. http, https 주소만 허용합니다.
+
+```bash
+export OAUTH2_REDIRECT_URI="https://yourdomain.com/oauth2/redirect"
+```
+
 ### 5. HTTPS 사용
 
 JWT 토큰 전송 시 반드시 HTTPS를 사용해야 합니다. SSL 인증서를 설정하세요.
 
 ## 트러블슈팅
+
+### 서버가 시작되지 않는 경우
+- `JWT_SECRET_KEY` 환경 변수가 있는지, 32바이트 이상인지 확인
+- `OAUTH2_REDIRECT_URI`가 http 또는 https 주소인지 확인
 
 ### CORS 에러가 발생하는 경우
 - `application.yml`의 `cors.allowed-origins`에 프론트엔드 URL이 추가되어 있는지 확인
@@ -498,6 +548,9 @@ JWT 토큰 전송 시 반드시 HTTPS를 사용해야 합니다. SSL 인증서�
 - Redirect URI가 정확히 일치하는지 확인 (포트 번호 포함)
 - 각 플랫폼의 콘솔에서 애플리케이션이 활성화되어 있는지 확인
 - 요청하는 scope가 플랫폼에서 허용되는지 확인
+- `account_link_denied`: 같은 이메일로 가입된 계정이 있지만, 이메일 인증이 확인되지 않아 연결하지 않은 경우입니다. 처음 가입한 방법으로 로그인하세요.
+- `email_required`: 소셜 계정의 이메일 제공에 동의해야 합니다.
+- 코드 교환이 401이면 코드가 60초 안에 한 번만 쓰였는지 확인
 
 ### H2 콘솔 접속 불가
 - `application.yml`에서 `spring.h2.console.enabled: true` 확인

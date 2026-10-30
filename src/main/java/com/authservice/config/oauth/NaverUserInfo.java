@@ -39,4 +39,10 @@ public class NaverUserInfo extends OAuth2UserInfo {
         }
         return (String) response.get("name");
     }
+
+    // 네이버 회원 정보 API는 이메일 인증 여부를 알려 주지 않는다. 확인할 수 없으므로 미인증으로 본다.
+    @Override
+    public boolean isEmailVerified() {
+        return false;
+    }
 }
